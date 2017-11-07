@@ -1,0 +1,81 @@
+<style>
+  a[href="#win17"] {
+    border-bottom: 1px dashed #19bde8;
+  }
+</style>
+<a href="#win17">Вызвать спеца</a>
+<a href="#x" class="overlay" id="win17"></a> 
+  <div class="popup"> 
+    <?$APPLICATION->IncludeComponent(
+      "altasib:feedback.form",
+      "call-specialist",
+      Array(
+        "ACTIVE_ELEMENT" => "Y",
+        "ADD_LEAD" => "N",
+        "AJAX_MODE" => "Y",
+        "AJAX_OPTION_ADDITIONAL" => "",
+        "AJAX_OPTION_HISTORY" => "N",
+        "AJAX_OPTION_JUMP" => "N",
+        "AJAX_OPTION_STYLE" => "Y",
+        "ALX_CHECK_NAME_LINK" => "N",
+        "BACKCOLOR_ERROR" => "#ffffff",
+        "BBC_MAIL" => "",
+        "BORDER_RADIUS" => "3px",
+        "CAPTCHA_TYPE" => "default",
+        "CATEGORY_SELECT_NAME" => "Выберите категорию",
+        "CHECK_ERROR" => "Y",
+        "COLOR_ERROR" => "#8E8E8E",
+        "COLOR_ERROR_TITLE" => "#A90000",
+        "COLOR_HINT" => "#000000",
+        "COLOR_INPUT" => "#727272",
+        "COLOR_MESS_OK" => "#963258",
+        "COLOR_NAME" => "#000000",
+        "EVENT_TYPE" => "ALX_FEEDBACK_FORM",
+        "FORM_ID" => "1",
+        "HIDE_FORM" => "Y",
+        "IBLOCK_ID" => "17",
+        "IBLOCK_TYPE" => "altasib_feedback",
+        "IMG_ERROR" => "/upload/altasib.feedback.gif",
+        "IMG_OK" => "/upload/altasib.feedback.ok.gif",
+        "LEAD_ADDRESS" => "",
+        "LEAD_COMPANY_TITLE" => "",
+        "LEAD_DATE_CLOSED" => "",
+        "LEAD_EMAIL_HOME" => "",
+        "LEAD_EMAIL_OTHER" => "",
+        "LEAD_EMAIL_WORK" => "",
+        "LEAD_LAST_NAME" => "",
+        "LEAD_NAME" => "",
+        "LEAD_OPPORTUNITY" => "",
+        "LEAD_PHONE_FAX" => "",
+        "LEAD_PHONE_HOME" => "",
+        "LEAD_PHONE_MOBILE" => "",
+        "LEAD_PHONE_OTHER" => "",
+        "LEAD_PHONE_PAGER" => "",
+        "LEAD_PHONE_WORK" => "",
+        "LEAD_POST" => "",
+        "LEAD_SECOND_NAME" => "",
+        "LEAD_TITLE" => "",
+        "LEAD_WEB_FACEBOOK" => "",
+        "LEAD_WEB_HOME" => "",
+        "LEAD_WEB_LIVEJOURNAL" => "",
+        "LEAD_WEB_OTHER" => "",
+        "LEAD_WEB_TWITTER" => "",
+        "LEAD_WEB_WORK" => "",
+        "MESSAGE_OK" => "Сообщение отправлено!",
+        "NAME_ELEMENT" => "ALX_DATE",
+        "PROPERTY_FIELDS" => array("EMAIL", "PHONE", "FIO", "FEEDBACK_TEXT"),
+        "PROPERTY_FIELDS_REQUIRED" => array("PHONE", "FIO"),
+        "REWIND_FORM" => "N",
+        "SECTION_MAIL_ALL" => "prog2@zavodd.ru",
+        "SEND_MAIL" => "N",
+        "SHOW_MESSAGE_LINK" => "Y",
+        "SIZE_HINT" => "10px",
+        "SIZE_INPUT" => "12px",
+        "SIZE_NAME" => "12px",
+        "USERMAIL_FROM" => "N",
+        "USE_CAPTCHA" => "Y",
+        "WIDTH_FORM" => "50%"
+      )
+    );?>
+  <a class="close" title="Закрыть" href="#close"></a> 
+</div>
