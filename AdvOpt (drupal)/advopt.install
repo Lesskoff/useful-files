@@ -1,0 +1,148 @@
+<?php
+/**
+ * Установочный файл (models) для модуля Advopt
+ */
+
+/* Реализация hook_schema() */
+function advopt_schema(){
+    $schema['advopt_uri'] = array(
+        'description' => 'Записи для страниц AdvOpt привязанные к URI',
+        'fields' => array(
+            // Первичный ключ - aid
+            'aid' => array(
+                'type' => 'serial',
+                'unsigned' => TRUE,
+                'not null' => TRUE,
+                'description' => 'Первичный ключ',
+            ),
+            // URI страницы
+            'uri' => array(
+                'type' => 'varchar',
+                'length' => 200,
+                'not null' => TRUE,
+                'description' => 'URI страницы'
+            ),
+            // Заголовок страницы
+            'title' => array(
+                'type' => 'varchar',
+                'length' => 260,
+                'not null' => TRUE,
+                'description' => 'Заголовок страницы'
+            ),
+            // Блок Description
+            'description' => array(
+                'type' => 'text',
+                'size' => 'normal',
+                'description' => 'Блок Description'
+            ),
+            // Блок Keywords
+            'keywords' => array(
+                'type' => 'text',
+                'size' => 'normal',
+                'description' => 'Блок Keywords'
+            ),
+            // H1 страницы
+            'header' => array(
+                'type' => 'varchar',
+                'length' => 260,
+                'not null' => TRUE,
+                'description' => 'H1 страницы'
+            ),
+            // Meta:Copyright
+            'copyright' => array(
+                'type' => 'varchar',
+                'length' => 260,
+                'not null' => TRUE,
+                'description' => 'Meta:Copyright страницы'
+            ),
+            //Meta:Author
+            'author' => array(
+                'type' => 'varchar',
+                'length' => 260,
+                'not null' => TRUE,
+                'description' => 'Meta:Author страницы'
+            ),
+            // Перелинковка
+            'landing' => array(
+                'title' => 'Данные для перелинковки',
+                'type' => 'text',
+                'size' => 'normal'
+            ),
+            // Приставка 1
+            'variable_1' => array(
+                'type' => 'varchar',
+                'length' => 70,
+                'not null' => TRUE,
+                'description' => 'Приставка для перелинковки 1'
+            ),
+            // Приставка 2
+            'variable_2' => array(
+                'type' => 'varchar',
+                'length' => 70,
+                'not null' => TRUE,
+                'description' => 'Приставка для перелинковки 2'
+            ),
+            // Приставка 3
+            'variable_3' => array(
+                'type' => 'varchar',
+                'length' => 70,
+                'not null' => TRUE,
+                'description' => 'Приставка для перелинковки 3'
+            ),
+        ),
+        // Уникальные значения
+        'unique keys' => array(
+            'uri' => array('uri'),
+        ),
+        // Первичный ключ
+        'primary key' => array('aid'),
+    );
+    return $schema;
+}
+
+/**
+ * Реализация hook_install()
+ */
+function advopt_install(){
+    db_update('system')
+        ->fields(array('weight' => 9999))
+        ->condition('name', 'advopt')
+        ->execute();
+    foreach (array(
+                 'default_meta_copyright',
+                 'default_meta_author',
+                 'advopt_landing_footer_title',
+                 'advopt_landing_footer_vars',
+                 'advopt_landing_footer_type',
+                 'advopt_landing_links_title',
+                 'advopt_landing_links_vars',
+                 'advopt_landing_links_type',
+             ) as $name) {
+        variable_set($name, '');
+    }
+    drupal_set_message('Модуль AdvOpt успешно установлен');
+}
+
+/**
+ * Реализация hook_uninstall()
+ */
+function advopt_uninstall(){
+    drupal_uninstall_schema('advopt');
+    foreach (array(
+                 'default_meta_copyright',
+                 'default_meta_author',
+                 'advopt_landing_footer_title',
+                 'advopt_landing_footer_vars',
+                 'advopt_landing_footer_type',
+                 'advopt_landing_links_title',
+                 'advopt_landing_links_vars',
+                 'advopt_landing_links_type',
+             ) as $name) {
+        variable_del($name);
+    }
+    db_delete('block')
+        ->condition('module', 'advopt')
+        ->execute();
+    drupal_set_message('Модуль AdvOpt успешно удален');
+}
+

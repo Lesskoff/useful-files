@@ -1,0 +1,545 @@
+<?php
+/**
+ * Advopt - модуль, позволяющий редактировать title, metadata, заголовки.
+ * Модуль разработан для ООО "Адвантика" г. Хабаровск 2012г.
+ * Автор модуля - Николай Werevolff Долганов
+ * Werevolff@mail.ru
+ */
+
+/** Реализация hook_help() */
+function advopt_help($path, $arg) {
+    switch ($path) {
+        case 'admin/help#advopt':
+            $docpath = drupal_get_path('module', 'AdvOpt').'/documentation.html';
+            $doc = fopen($docpath, "r")or die('Невозможно открыть файл документации. Попробуйте переустановить модуль.');
+            $output = fread($doc, filesize($docpath));
+            fclose($doc);
+            $docpath = drupal_get_path('module', 'AdvOpt').'/landing_documentation.html';
+            $doc = fopen($docpath, "r")or die('Невозможно открыть файл документации. Попробуйте переустановить модуль.');
+            $output .= fread($doc, filesize($docpath));
+            fclose($doc);
+            return $output;
+        case 'admin/config/search/advopt':
+            return l('Справка', 'admin/help/advopt', array('attributes' => array('class' => 'module-link module-link-help')));
+    }
+}
+
+/** Реализация hook_theme() */
+function advopt_theme(){
+    return array();
+}
+
+/** Реализация hook_permission() */
+function advopt_permission(){
+    return array(
+        'create new advopt' => array(
+            'title' => t('Редактирование метаданных'),
+        ),
+    );
+}
+
+/**
+ * Проверка прав доступа
+ */
+function advopt_access($op, $entity, $account = NULL, $entity_type = 'advopt') {
+    return user_access('administer site configuration'); // сущность будет доступна только администратору сайта
+}
+
+/**
+ * Реализация hook_menu()
+ */
+function advopt_menu() {
+    $items = array();
+    // Список записей
+    $items['admin/config/search/advopt'] = array(
+        'title' => 'Метаинформация для размещения на целевых страницах',
+        'description' => 'Метаинформация для размещения на целевых страницах.',
+        'page callback' => 'advopt_uri_overview',
+        'access arguments' => array('administer site configuration'),
+        'file' => 'advopt.admin.inc',
+    );
+    $items['admin/config/search/advopt/list'] = array(
+        'title' => 'Метаданные AdvOpt',
+        'type' => MENU_DEFAULT_LOCAL_TASK,
+        'page callback' => 'advopt_uri_overview',
+        'file' => 'advopt.admin.inc',
+        'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+    );
+    // Создание новой записи
+    $items['admin/config/search/advopt/add_uri'] = array(
+        'title' => 'Добавить Метаданные AdvOpt',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('advopt_uri_add'),
+        'description' => 'Добавление новой записи метаданных AdvOpt.',
+        'access arguments' => array('administer site configuration'),
+        'file' => 'advopt.admin.inc',
+        'type' => MENU_LOCAL_ACTION,
+    );
+    // Удаление записи
+    $items['admin/config/search/advopt/%/delete-uri'] = array(
+        'title' => 'Удалить запись метаданных AdvOpt',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('advopt_uri_delete', 4),
+        'description' => 'Удаление записи метаданных AdvOpt.',
+        'access arguments' => array('administer site configuration'),
+        'file' => 'advopt.admin.inc',
+        'type' => MENU_CALLBACK,
+    );
+    // Изменение записи
+    $items['admin/config/search/advopt/%/change-uri'] = array(
+        'title' => 'Изменить запись метаданных AdvOpt',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('advopt_uri_change', 4),
+        'description' => 'Изменение записи метаданных AdvOpt.',
+        'access arguments' => array('administer site configuration'),
+        'file' => 'advopt.admin.inc',
+        'type' => MENU_CALLBACK,
+    );
+    // Полный экспорт данных
+    $items['admin/config/search/advopt/full-export'] = array(
+        'title' => 'Экспорт данных',
+        'description' => 'Полный экспорт данных в формат JSon',
+        'page callback' => 'advopt_full_export',
+        'access arguments' => array('administer site configuration'),
+        'file' => 'advopt.admin.inc',
+        'type' => MENU_LOCAL_ACTION,
+    );
+    // Изменение общих для сайта copyright и author
+    $items['admin/config/search/advopt/default-copyright-author'] = array(
+        'title' => 'Изменение общих для сайта copyright и author',
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('advopt_default_copyright_author'),
+        'description' => 'Изменение общих для сайта copyright и author',
+        'access arguments' => array('administer site configuration'),
+        'file' => 'advopt.admin.inc',
+        'type' => MENU_LOCAL_ACTION,
+    );
+    return $items;
+}
+
+/**
+ * Получаем advopt_uri по md5 uri
+ */
+function get_uri_by_hash($urihash){
+    $all = db_select('advopt_uri', 'n')
+            ->fields('n')
+            ->execute()
+            ->fetchAll();
+    $result = false;
+    foreach ($all as $item){
+        if (md5($item->uri) == $urihash){
+            $result = $item;
+        }
+    }
+    return $result;
+}
+
+/**
+ * Удаляем advopt_uri
+ */
+function delete_uri($obj) {
+    db_delete('advopt_uri')
+        ->condition('aid', $obj->aid)
+        ->execute();
+}
+
+/**
+ * Получаем запись по URI
+ */
+function get_metadata_by_uri($uri){
+    $link = $uri;
+    if ($link == 'node') {
+        $link = '';
+    }
+    $object = db_select('advopt_uri', 'n')
+        ->fields('n')
+        ->condition('n.uri', $link)
+        ->execute()
+        ->fetchObject();
+    return $object;
+}
+
+/**
+ * Функция собирает массив для друпаловской функции drupal_add_html_head.
+ * До этого тут получалось 4 идентичных функции для разных типов метатегов, сделал одну
+ */
+function get_metatag_array($object, $meta_type, $defaults = FALSE){
+    if (!$defaults){
+        $meta_tag = array(
+            '#type' => 'html_tag',
+            '#tag' => 'meta',
+            '#attributes' => array(
+                'name' => $meta_type,
+                'content' => $object->$meta_type
+            )
+        );
+        return $meta_tag;
+    }else{
+        $meta_tag = array(
+            '#type' => 'html_tag',
+            '#tag' => 'meta',
+            '#attributes' => array(
+                'name' => $meta_type,
+                'content' => $object
+            )
+        );
+        return $meta_tag;
+    }
+}
+
+/**
+ * Заменяем H1
+ */
+function advopt_page_alter(&$page){
+    $object = get_metadata_by_uri(request_path());
+    if(isset($object->title) && strlen($object->header) > 0) {
+        drupal_set_title($object->header);
+    }
+}
+
+/**
+ * Заменяем метаданные на странице
+ */
+function advopt_preprocess_html(&$vars) {
+    $object = get_metadata_by_uri(request_path());
+    if(strlen(request_path())==0 && isset($object->title)==false){
+        $object = get_metadata_by_uri('/');
+    }
+    $default_meta_copyright_value = variable_get('default_meta_copyright');
+    $default_meta_author_value = variable_get('default_meta_author');
+    if(isset($object->title)) { //TODO: проверок целый вагон получился, переделать нормально надо бы.
+        $vars['head_title'] = $object->title;
+        if(strlen($object->description) > 0) {
+            drupal_add_html_head(get_metatag_array($object, 'description'), 'meta_description' );
+        }
+        if(strlen($object->keywords) > 0) {
+            drupal_add_html_head(get_metatag_array($object, 'keywords'), 'meta_keywords' );
+        }
+        //если тег не переопределен для страницы, выводим тот, который задан в общих, если задан конечно
+        if ($object->copyright !== '<disable>'){
+            if(strlen($object->copyright) > 0) {
+                drupal_add_html_head(get_metatag_array($object, 'copyright'), 'meta_copyright' );
+            }else{
+                drupal_add_html_head(get_metatag_array($default_meta_copyright_value, 'copyright', TRUE), 'meta_copyright' );
+            }
+        }
+        if ($object->author !== '<disable>'){
+            if(strlen($object->author) > 0 && $object->author !== '<disable>') {
+                drupal_add_html_head(get_metatag_array($object, 'author'), 'meta_author' );
+            }else{
+                drupal_add_html_head(get_metatag_array($default_meta_author_value, 'author', TRUE), 'meta_author' );
+            }
+        }
+    }else{
+        //согласно нашим требованиям, автора и копирайт надо выводить на всех страничках сайта вообще
+        if ($default_meta_copyright_value != '') {
+            drupal_add_html_head(get_metatag_array($default_meta_copyright_value, 'copyright', TRUE), 'meta_copyright' );
+        }
+        if ($default_meta_author_value != '') {
+            drupal_add_html_head(get_metatag_array($default_meta_author_value, 'author', TRUE), 'meta_author' );
+        }
+    }
+}
+
+/**
+ * Реализация hook_block_info()
+ */
+function advopt_block_info(){
+    $blocks = array();
+    $blocks['landing'] = array(
+        'info' => 'Перелинковка'
+    );
+    return $blocks;
+}
+
+/**
+ * Реализация hook_block_view
+ */
+function advopt_block_view($delta=0) {
+  $block = array();
+  $block['subject'] = "Перелинковка";
+  $object = get_metadata_by_uri(request_path());
+  $content = '';
+  if(isset($object->title) && strlen($object->landing) > 0){
+      $myvariables = array($object->variable_1, $object->variable_2, $object->variable_3);
+      $strings = explode(PHP_EOL, $object->landing);
+      $footers = get_footers_array($strings);
+      if (strlen(variable_get('advopt_landing_footer_title', '')) > 0){
+          $content .= '<h6 class="landing-footer-title">'.variable_get('advopt_landing_footer_title').'</h6>';
+      }
+      $content .= get_landing_footer($footers, $myvariables);
+  }
+  else {
+      $links = get_links_array();
+      $content .= get_landing_links($links);
+  }
+  $block['content'] = $content;
+  return $block;
+}
+
+/**
+ * Реализация hook_block_configure
+ */
+function advopt_block_configure($delta) {
+    if ($delta == 'landing') {
+        $form = array();
+        $form['footer_type'] = array(
+            '#type' => 'select',
+            '#title' => 'Отображение footer',
+            '#options' => array(
+                0 => 'Первое вхождение',
+                1 => 'Случайное вхождение',
+                2 => 'Все вхождения'
+            ),
+            '#default_value' => variable_get('advopt_landing_footer_type', 0),
+            '#description' => 'Варианты отображения ключевых фраз из перелинковки',
+        );
+        $form['footer_vars'] = array(
+            '#type' => 'checkbox',
+            '#title' => 'Удалять приставки в footer',
+            '#default_value' => variable_get('advopt_landing_footer_vars', FALSE),
+        );
+        $form['links_type'] = array(
+            '#type' => 'select',
+            '#title' => 'Отображение ссылок',
+            '#options' => array(
+                0 => 'Привязанная ссылка',
+                1 => 'Случайная ссылка',
+                2 => 'Список привязанных ссылок',
+                3 => 'Список случайных ссылок',
+                4 => 'Облако привязанных тегов',
+                5 => 'Облако случайных тегов'
+            ),
+            '#default_value' => variable_get('advopt_landing_links_type', 0),
+        );
+        $form['links_vars'] = array(
+            '#type' => 'checkbox',
+            '#title' => 'Удалять приставки в ссылках',
+            '#default_value' => variable_get('advopt_landing_links_vars', FALSE),
+        );
+        $form['footer_title'] = array(
+            '#type' => 'textfield',
+            '#title' => 'Заголовок для footer',
+            '#default_value' => variable_get('advopt_landing_footer_title', ''),
+            '#size' => 40,
+            '#maxlength' => 70,
+            '#description' =>  'Заголовок для отображаемых ключевых фраз',
+        );
+        $form['links_title'] = array(
+            '#type' => 'textfield',
+            '#title' => 'Заголовок для ссылок',
+            '#default_value' => variable_get('advopt_landing_links_title', ''),
+            '#size' => 40,
+            '#maxlength' => 70,
+            '#description' =>  'Заголовок для отображаемых ссылок',
+        );
+        return $form;
+    }
+}
+
+/**
+ * Реализация hook_block_save
+ */
+function advopt_block_save($delta, $edit=array()) {
+    if ($delta == 'landing') {
+        foreach($edit as $key=>$value){
+            variable_set('advopt_landing_'.$key, $value);
+        }
+    }
+}
+
+/**
+ * Получаем массив footers
+ */
+function get_footers_array($strings){
+    $footers = array();
+    foreach($strings as $string){
+        if (preg_match("/^[\|]{2}/i", $string)){
+            $footers[] = trim(str_replace('||', '', $string));
+        }
+    }
+    return $footers;
+}
+
+/**
+ * Получаем массив links
+ */
+function get_links_array(){
+    $all = db_select('advopt_uri', 'n')
+        ->fields('n', array('aid', 'landing', 'uri', 'variable_1', 'variable_2', 'variable_3'))
+        ->execute()
+        ->fetchAll();
+    $result = array();
+    foreach ($all as $object){
+        $result[$object->aid]['myvariables'] = array($object->variable_1, $object->variable_2, $object->variable_3);
+        $links = array();
+        $strings = explode(PHP_EOL, $object->landing);
+        foreach($strings as $string){
+            if (!preg_match("/^[\|]{2}/i", $string)){
+                $links[] = preg_replace('/#([^#]+)#/', "<a href='/".$object->uri."' class='landing_uri'>\\1</a>", $string);
+            }
+        }
+        $result[$object->aid]['links'] = $links;
+        $result[$object->aid]['uri'] = $object->uri;
+    }
+    return $result;
+}
+
+/**
+ * Получение footer
+ */
+function get_landing_footer($footers=array(), $myvariables=array()) {
+	if(count($footers) > 0){
+		$footers = preprocess_footer_variables($footers, $myvariables);
+		if (count($footers) > 0) {
+		switch (variable_get('advopt_landing_footer_type', 0)):
+		case 0:
+			return $footers[0];
+		case 1:
+			return $footers[array_rand($footers)];
+		case 2:
+			return implode(', ', $footers);
+		endswitch;
+		}
+	}
+}
+/**
+ * Обработка приставок в footer
+ */
+function preprocess_footer_variables($footers, $myvariables) {
+    switch (variable_get('advopt_landing_footer_vars', 0)){
+    case 0:
+        for ($i=0; $i<count($footers); $i++){
+            $patterns = array();
+            $patterns[0] = '/\{%1%\}/';
+            $patterns[1] = '/\{%2%\}/';
+            $patterns[2] = '/\{%3%\}/';
+            $replacements = array();
+            $replacements[0] = $myvariables[0];
+            $replacements[1] = $myvariables[1];
+            $replacements[2] = $myvariables[2];
+            $footers[$i] = preg_replace($patterns, $replacements, $footers[$i]);
+        }
+    case 1:
+        for ($i=0; $i<count($footers); $i++){
+            $footers[$i] = preg_replace('/\{%[0-9]{1}%\}/', '', $footers[$i]);
+        }
+    }
+    return $footers;
+}
+
+/**
+ * Обрабатываем приставки в ссылках
+ */
+function preprocess_links_variables($link, $myvariables){
+    $patterns = array();
+    $patterns[0] = '/\{%1%\}/';
+    $patterns[1] = '/\{%2%\}/';
+    $patterns[2] = '/\{%3%\}/';
+    $replacements = array();
+    switch (variable_get('advopt_landing_links_vars', 0)){
+    case 0:
+        foreach ($myvariables as $myvariable) {
+            $replacements[] = $myvariable;
+        }
+        $link = preg_replace($patterns, $replacements, $link);
+    case 1:
+        $replacements[0] = '';
+        $replacements[1] = '';
+        $replacements[2] = '';
+        $link = preg_replace($patterns, $replacements, $link);
+    }
+    return str_replace('  ', ' ', $link);
+}
+
+/**
+ * Получение ссылок для перелинковки
+ */
+function get_landing_links($links){
+    switch (variable_get('advopt_landing_links_type', 0)):
+    case 0:
+        $links = get_all_links_in_array($links);
+        $hash = abs(crc32(request_path()));
+        $keys = array_keys($links);
+        $key = $keys[$hash%count($links)];
+        return $links[$key];
+    case 1:
+        $links = get_all_links_in_array($links);
+        return $links[array_rand($links)];
+    case 2:
+        $result = '<ul class="landing_ul_relative">';
+        $mylinks = get_relative_links($links);
+        foreach ($mylinks as $mylink){
+            $result .= '<li>'.$mylink.'</li>';
+        }
+        $result .= '</ul>';
+        return $result;
+    case 3:
+        $result = '<ul class="landing_ul_random">';
+        $mylinks = get_random_links($links);
+        foreach ($mylinks as $mylink){
+            $result .= '<li>'.$mylink.'</li>';
+        }
+        $result .= '</ul>';
+        return $result;
+    // TODO подключить js и css
+    case 4:
+        $result = '<ul class="landing_ul_cloud_relative">';
+        $mylinks = get_relative_links($links);
+        foreach ($mylinks as $mylink){
+            $result .= '<li>'.$mylink.'</li>';
+        }
+        $result .= '</ul>';
+        return $result;
+    case 5:
+        $result = '<ul class="landing_ul_cloud_random">';
+        $mylinks = get_random_links($links);
+        foreach ($mylinks as $mylink){
+            $result .= '<li>'.$mylink.'</li>';
+        }
+        $result .= '</ul>';
+        return $result;
+    endswitch;
+}
+
+/**
+ * Получаем единый массив ссылок
+ */
+function get_all_links_in_array($links){
+    $result = array();
+    foreach ($links as $object){
+        foreach ($object["links"] as $link){
+            $result[] = preprocess_links_variables($link, $object['myvariables']);
+        }
+    }
+    return $result;
+}
+
+/**
+ * Получаем массив связанных ссылок
+ */
+function get_relative_links($links){
+    $result = array();
+    foreach ($links as $object){
+        if (count($object['links']) > 0) {
+            $hash = abs(crc32(request_path()));
+            $keys = array_keys($object['links']);
+            $key = $keys[$hash%count($object['links'])];
+            $result[] = preprocess_links_variables($object['links'][$key], $object['myvariables']);
+        }
+    }
+    return $result;
+}
+
+/**
+ * Получаем массив случайных ссылок
+ */
+function get_random_links($links){
+    $result = array();
+    foreach ($links as $object){
+        if (count($object['links']) > 0) {
+            $result[] = preprocess_links_variables($object['links'][array_rand($object['links'])], $object['myvariables']);
+        }
+    }
+    return $result;
+}
