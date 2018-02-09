@@ -84,7 +84,7 @@ $mArr_ru =  array(
 			<li>Перейдите в административную панель своего сайта на страницу <b>Настройки &gt; Инструменты &gt; Резервное копирование</b>
 			<li>Создайте полную резервную копию, которая будет включать <b>публичную часть</b>, <b>ядро</b> и <b>базу данных</b>
 			</ul>
-			<b>Документация:</b> <a href='https://dev.1c-bitrix.ru/learning/course/index.php?COURSE_ID=35&LESSON_ID=2031' target='_blank'>https://dev.1c-bitrix.ru/learning/course/index.php?COURSE_ID=35&LESSON_ID=2031</a>
+			<a href='https://dev.1c-bitrix.ru/~4thxV' target='_blank'>Документация</a>
 			</p>
 			",
 			"ARC_DOWN" => "Скачать резервную копию с дальнего сайта",
@@ -160,7 +160,7 @@ $mArr_ru =  array(
 			"DOC_ROOT_WARN" => "Во избежание проблем с доступом был переписан путь к корню сайта в настройках сайтов. Проверьте настройки сайтов.",
 			"CDN_WARN" => "Ускорение CDN было отключено т.к. текущий домен не соответствует домену из настроек CDN.",
 			"HOSTS_WARN" => "Было отключено ограничение по доменам в модуле проактивной защиты т.к. текущий домен попадает под ограничения.",
-			"WARN_CLEARED" => "При распаковке ядра продукта в папке /bitrix/modules были обнаружены файлы, которых не было в архиве. Эти файлы перенесены в /bitrix/tmp/restore.removed",
+			"WARN_CLEARED" => "При распаковке ядра были обнаружены файлы, которых не было в архиве. Эти файлы перенесены в /bitrix/tmp/restore.removed",
 			"WARN_SITES" => "Вы распаковали многосайтовый архив, файлы дополнительных сайтов следует скопировать вручную из папки /bitrix/backup/sites",
 			"WARNING" => "Внимание!",
 			"DBCONN_WARN" => "Данные подключения взяты из dbconn.php. Если их не изменить, будет переписана база данных текущего сайта.",
@@ -257,7 +257,7 @@ $mArr_en = array(
 			"DOC_ROOT_WARN" => "To prevent access problems the document root has been cleared in the site settings.",
 			"CDN_WARN" => "CDN Web Accelerator has been disabled because current domain differs from the one stored in CDN settings.",
 			"HOSTS_WARN" => "Domain restriction has beed disabled (security module) because current domain doesn't correspond settings.",
-			"WARN_CLEARED" => "Some files were found in /bitrix/modules which don't present in the backup. They were moved to /bitrix/tmp/restore.removed",
+			"WARN_CLEARED" => "Some files were found in /bitrix which don't present in the backup. They were moved to /bitrix/tmp/restore.removed",
 			"WARN_SITES" => "You have extracted the multisite archive, please copy files of additional sites from /bitrix/backup/sites to an appropriate place",
 			"WARNING" => "Warning!",
 			"DBCONN_WARN" => "The connection settings are read from dbconn.php. If you don't change them, current database will be overwriten.",
@@ -355,7 +355,7 @@ $mArr_de = array(
 			"DOC_ROOT_WARN" => "Um Probleme mit Zugriffsrechten zu vermeiden, wurde das Dokumenten-Root in den Einstellungen der Website aufgeräumt.",
 			"CDN_WARN" => "CDN Web-Accelerator wurde deaktiviert, weil die aktuelle Domain sich von der unterscheidet, die in den CDN-Einstellungen gespeichrt ist.",
 			"HOSTS_WARN" => "Domain-Einschränkung wurde deaktiviert (Sicherheitsmodul), weil die aktuelle Domain den Einstellungen nicht entspricht.",
-			"WARN_CLEARED" => "Einige Dateien wurden in /bitrix/modules gefunden, sie sind in der Backup nicht enthalten. Sie wurden nach /bitrix/tmp/restore.removed verschoben",
+			"WARN_CLEARED" => "Einige Dateien wurden in /bitrix gefunden, sie sind in der Backup nicht enthalten. Sie wurden nach /bitrix/tmp/restore.removed verschoben",
 			"WARN_SITES" => "Sie haben das Multisite-Archiv entpackt, kopieren Sie bitte die Dateien zusätzlicher Websites von /bitrix/backup/sites in einen entsprechenden Ort",
 			"WARNING" => "Warnung!",
 			"DBCONN_WARN" => "Die Verbindungseinstellungen werden von dbconn.php gelesen. Wenn Sie sie nicht ändern, wird aktuelle Datenbank überschrieben.",
@@ -1054,7 +1054,7 @@ elseif($Step == 2)
 				{
 					if ($_REQUEST['skip'])
 					{
-						$tar->readHeader();
+						while($tar->readHeader() === false);
 						$tar->SkipFile();
 					}
 					while(($r = $tar->extractFile()) && haveTime());
@@ -1102,10 +1102,22 @@ elseif($Step == 2)
 	{
 		if (file_exists(RESTORE_FILE_LIST))
 		{
+			$modules = $_SERVER['DOCUMENT_ROOT'].'/bitrix/modules';
+			$components = $_SERVER['DOCUMENT_ROOT'].'/bitrix/components/bitrix';
 			include(RESTORE_FILE_LIST);
 			$ds = new CDirRealScan;
 			$ds->startPath = $_REQUEST['nextPath'];
-			$res = $ds->Scan($_SERVER['DOCUMENT_ROOT'].'/bitrix/modules');
+			if (strpos($_REQUEST['nextPath'], $components) === 0)
+				$init_path = $components;
+			else
+				$init_path = $modules;
+			$res = $ds->Scan($init_path);
+
+			if ($res === true && $init_path == $modules)
+			{
+				$ds->nextPath = $components;
+				$res = 'BREAK';
+			}
 
 			if ($res === 'BREAK')
 			{
@@ -1133,6 +1145,7 @@ elseif($Step == 2)
 		$bottom = '<a href="javascript:reloadPage(1, \''. LANG.'\')">'.getMsg('BUT_TEXT_BACK').'</a> '.
 			'<input type="button" value="'.getMsg("BUT_TEXT1", LANG).'" onClick="reloadPage(2, \''. LANG.'\')">';
 		showMsg(getMsg('TITLE_PROCESS1'),$status.$hidden,$bottom);
+		die();
 	}
 
 	if ($bSelectDumpStep)
@@ -1353,7 +1366,13 @@ elseif($Step == 3)
 		if($oDB->getError() != "")
 			showMsg(getMsg("ERR_DUMP_RESTORE", LANG), '<div style="color:red">'.$oDB->getError().'</div>', $bottom);
 		else
+		{
+			if (!$oDB->ft_index)
+			{
+				$oDB->Query('UPDATE b_option SET VALUE="'.$oDB->escapeString(serialize(array("SEARCH_CONTENT" => false))).'" WHERE MODULE_ID="main" AND NAME LIKE "~ft_%"');
+			}
 			showMsg(getMsg('FINISH'),GetHidden(array('DBLogin','DBPassword','DBHost','DBName','dump_name', 'arc_name', 'check_site_path')).'<script>reloadPage(4, \''.LANG.'\');</script>');
+		}
 	}
 }
 elseif($Step == 4)
@@ -1482,7 +1501,10 @@ class CDBRestore
 	function Query($sql)
 	{
 		if (!$this->ft_index && preg_match('#^CREATE TABLE#i', $sql))
-			$sql = preg_replace('#FULLTEXT (KEY[^)]+)\)#', '\\1(100))', $sql);
+		{
+			$sql = preg_replace("#[\r\n\s]*FULLTEXT KEY[^\r\n]*[\r\n]*#m", "", $sql);
+			$sql = str_replace("),)", "))", $sql);
+		}
 		$rs = $this->mysqli ? mysqli_query($this->db_Conn, $sql) : mysql_query($sql, $this->db_Conn);
 		if (!$rs)
 		{
@@ -2382,7 +2404,7 @@ function LoadFile($strRealUrl, $strFilename, $arHeaders = array())
 			fclose($sockethandle);
 
 			if ($debug)
-				file_put_contents($_SERVER['DOCUMENT_ROOT'].'/log.txt',"\n\n================\n".$replyheader, 8);
+				file_put_contents($_SERVER['DOCUMENT_ROOT'].'/log.txt',"\n======\n".$request."\n\n".$replyheader, 8);
 			$ar_replyheader = explode("\r\n", $replyheader);
 
 			$replyproto = "";
@@ -2411,7 +2433,7 @@ function LoadFile($strRealUrl, $strFilename, $arHeaders = array())
 			$strAcceptRanges = "";
 			foreach ($ar_replyheader as $i => $headerLine)
 			{
-				if (strpos($headerLine, "Location") !== false)
+				if (strpos($headerLine, "Location") === 0)
 					$strLocationUrl = trim(substr($headerLine, strpos($headerLine, ":") + 1, strlen($headerLine) - strpos($headerLine, ":") + 1));
 				elseif (strpos($headerLine, "Content-Length") !== false)
 					$iNewRealSize = IntVal(Trim(substr($headerLine, strpos($headerLine, ":") + 1, strlen($headerLine) - strpos($headerLine, ":") + 1)));
@@ -2510,7 +2532,7 @@ function LoadFile($strRealUrl, $strFilename, $arHeaders = array())
 			$replyheader .= $result;
 
 		if ($debug)
-			file_put_contents($_SERVER['DOCUMENT_ROOT'].'/log.txt',"\n======\n".$replyheader, 8);
+			file_put_contents($_SERVER['DOCUMENT_ROOT'].'/log.txt',"\n======\n".$request."\n\n".$replyheader, 8);
 		$ar_replyheader = explode("\r\n", $replyheader);
 
 		$replyproto = "";
@@ -2770,7 +2792,16 @@ class CTar
 		$chk = $data['devmajor'].$data['devminor'];
 
 		if (!is_numeric(trim($data['checksum'])) || $chk!='' && $chk!=0)
-			return $this->Error('Archive is corrupted, wrong block: '.($this->Block-1));
+		{
+			global $debug;
+			if ($debug)
+			{
+				echo '<pre>';
+				print_r($this->debug_header);
+				echo '</pre>';
+			}
+			return $this->Error('Archive is corrupted, wrong block: '.($this->Block-1).', file: '.$this->file.', md5sum: '.md5_file($this->file));
+		}
 
 		$header['filename'] = trim(trim($data['prefix'], "\x00").'/'.trim($data['filename'], "\x00"),'/');
 		$header['mode'] = OctDec($data['mode']);
@@ -2858,7 +2889,7 @@ class CTar
 			$this->lastPath = $f = $this->path.'/'.$header['filename'];
 		}
 
-		if ($header['type'] != 5) // пишем контент в файл 
+		if ($header['type'] != 5) // пишем контент в файл
 		{
 			if (!$rs)
 			{
@@ -2883,9 +2914,10 @@ class CTar
 			}
 			fclose($rs);
 
+			if (($s = filesize($f)) != $header['size'])
+				return $this->Error('File size is wrong: '.$header['filename'].' (real: '.$s.'  expected: '.$header['size'].')');
+
 			//chmod($f, $header['mode']);
-			if (($s=filesize($f)) != $header['size'])
-				return $this->Error('File size is wrong: '.$header['filename']).' (actual: '.$s.'  expected: '.$header['size'].')';
 		}
 
 		if ($this->header['type']==5)
@@ -3299,7 +3331,7 @@ class CTar
 		return false;
 	}
 
-	function xmkdir($dir)
+	public static function xmkdir($dir)
 	{
 		if (!file_exists($dir))
 		{
@@ -3397,14 +3429,14 @@ class CTarRestore extends CTar
 			$dr = str_replace(array('/','\\'),'',$_SERVER['DOCUMENT_ROOT']);
 			$f = str_replace(array('/','\\'),'',$this->path.'/'.$header['filename']);
 
-			if ($header['type'] != 5 && self::strpos($f, $dr.'bitrixmodules') === 0)
+			if ($header['type'] != 5 && (self::strpos($f, $dr.'bitrixmodules') === 0 || self::strpos($f, $dr.'bitrixcomponentsbitrix') === 0))
 			{
 				if (!file_exists(RESTORE_FILE_LIST))
 				{
 					self::xmkdir($_SERVER['DOCUMENT_ROOT'].'/bitrix/tmp');
 					file_put_contents(RESTORE_FILE_LIST, '<'.'?'."\n");
 				}
-				file_put_contents(RESTORE_FILE_LIST, '$a[\''.addslashes(self::substr(str_replace('\\','/',$header['filename']), 15))."'] = 1;\n", 8); // strlen(bitrix/modules/) = 15
+				file_put_contents(RESTORE_FILE_LIST, '$a[\''.addslashes(self::substr(str_replace('\\','/',$header['filename']), 7))."'] = 1;\n", 8); // strlen(bitrix/) = 7
 			}
 
 			if ($f == $dr.'restore.php')
@@ -3437,11 +3469,8 @@ class CTarRestore extends CTar
 			else
 				$this->EncCurrent = 'utf-8';
 
-			if (!function_exists('mb_convert_encoding'))
-				return $this->Error(getMsg('ERR_CANT_DECODE'));
-			$str0 = mb_convert_encoding($str, 'cp1251', 'utf8');
-			if (preg_match("/[\xC0-\xFF]/",$str0))
-				$this->EncRemote = 'utf8';
+			if (preg_match("/[\xC0-\xDF][\x80-\xBF]{1}|[\xE0-\xEF][\x80-\xBF]{2}|[\xF0-\xF7][\x80-\xBF]{3}/", $str)) // 110xxxxx 10xxxxxx | 1110xxxx 10xxxxxx 10xxxxxx | 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+				$this->EncRemote = 'utf-8';
 			elseif (preg_match("/[\xC0-\xFF]/",$str))
 				$this->EncRemote = 'cp1251';
 			else
@@ -3676,8 +3705,10 @@ class CDirRealScan extends CDirScan
 {
 	function Scan($dir)
 	{
+		if (!is_dir($dir))
+			return true;
 		if (!$this->cut)
-			$this->cut = CTar::strlen($dir) + 1; // 1 for "/"
+			$this->cut = CTar::strlen($_SERVER['DOCUMENT_ROOT'].'/bitrix/');
 		return parent::Scan($dir);
 	}
 

@@ -32,6 +32,18 @@ $mail->Password = 'PASSWORD'; // Ваш пароль от почты с кото
 $mail->SMTPSecure = 'ssl';                            // Enable TLS encryption, `ssl` also accepted
 $mail->Port = 465; // TCP port to connect to / этот порт может отличаться у других провайдеров
 
+// Прикрепление файлов
+if(isset($_FILES['uploaded_file']))
+{
+	if($_FILES['uploaded_file']['error'] == 0)
+	{
+		if($_FILES['uploaded_file']['size'] <= 10000000)
+		{
+			$mail->AddAttachment($_FILES['uploaded_file']['tmp_name'],$_FILES['uploaded_file']['name']);
+		}
+	}
+}
+
 $mail->setFrom('iutas@bk.ru'); // от кого будет уходить письмо?
 $mail->addAddress('iutas@bk.ru');     // Кому будет уходить письмо 
 //$mail->addAddress('ellen@example.com');               // Name is optional
