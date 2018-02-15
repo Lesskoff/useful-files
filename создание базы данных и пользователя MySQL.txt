@@ -1,0 +1,9 @@
+create database имя_базы_данных;
+
+
+
+create user 'newuser'@'localhost' identified by 'password';
+
+grant all privileges on * . * to 'newuser'@'localhost';
+
+flush privileges;
