@@ -60,7 +60,7 @@ $mail->AltBody = '';
 
 if (isset($_POST['g-recaptcha-response']) && !empty($_POST['g-recaptcha-response']))
 {
-	if (isset($_POST['name']) && !empty($_POST['name']) && isset($_POST['phone']) && !empty($_POST['phone']) && isset($_POST['email']) && !empty($_POST['email']))
+	if (isset($_POST['user_name']) && !empty($_POST['user_name']) && isset($_POST['user_phone']) && !empty($_POST['user_phone']) && isset($_POST['user_email']) && !empty($_POST['user_email']))
 	{
 		if(!$mail->send()) {
 			echo '<p style="text-align:center; font-size:30px">Произошла ошибка</p>' . '<p style="text-align:center; font-size:20px">Позвонить нам: 8 (4212) 936-606, 8 (4212) 62-57-62 или</p>' . '<p style="text-align:center; font-size:20px"><a href="/">Вернуться на сайт</a></p>';
