@@ -11,7 +11,7 @@ $(".НАЗВАНИЕ КЛАССА").click(function(){
 
 
 
-Пример:
+// Пример:
 
 jQuery('document').ready(function() {
 
