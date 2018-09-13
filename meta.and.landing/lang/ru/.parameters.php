@@ -1,0 +1,4 @@
+<?
+$MESS['ADVANTIKA_META_PARAMETERS_GROUP_CONTAINER_PARAMETERS'] = 'Настройки';
+$MESS['ADVANTIKA_META_PARAMETERS_IBLOCK'] = 'Инфоблок с МЕТА информацией';
+?>
