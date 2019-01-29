@@ -1,4 +1,6 @@
 <?php
+// require $_SERVER["DOCUMENT_ROOT"].'/seo-redirects.php'; // подгружаем файл с редиректами битых и неверных ссылок - Нужно вставить куда нибудь перед загрузкой сайта (например в index.php или header.php)
+
 $links = [
 	'/from' => '/to',
 ];
