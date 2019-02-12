@@ -1,0 +1,32 @@
+Options -Indexes 
+ErrorDocument 404 /404.php
+
+<IfModule mod_rewrite.c>
+  Options +FollowSymLinks
+  RewriteEngine On
+  RewriteBase /
+
+  # Редирект на https
+  RewriteCond %{HTTPS} off
+  RewriteCond %{HTTP:X-Forwarded-Proto} !https
+  RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+  # Редирект с домена с WWW префиксом на без
+  RewriteCond %{HTTP_HOST} ^www.SITE\.COM$ [NC]
+  RewriteRule ^(.*)$ https://SITE.COM/$1 [R=301,L]
+
+  # Редирект со страниц без слеша на страницы без слешем, так же убираем несколько слешей (///)
+  # Правило обрабатывает внутренние страницы
+  RewriteCond %{REQUEST_URI} ^(.*)/{2,}(.*)$
+  # Проверяем, повторяется ли слеш (//) более двух раз.
+  RewriteRule . %1/%2 [R=301,L]
+  # Исключаем все лишние слеши.
+  # удаляем слеши для главной http://SITE.COMru/////
+  RewriteCond %{THE_REQUEST} ([^\s]*)\/{2,}(\?[^\s]*)?
+  RewriteRule (.*) / [R=301,L]
+
+  # Убираем index.php в конце ссылок
+  RewriteCond %{REQUEST_METHOD} =GET
+  RewriteCond %{REQUEST_URI} ^(.*)/index\.php$
+  RewriteRule ^(.*)$ %1/ [R=301,L]
+</IfModule>
