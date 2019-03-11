@@ -1,7 +1,7 @@
 $("#call-order-main").submit(function(e) {
   e.preventDefault();
   var it = $(this);
-  var find = it.parents('section');
+  var find = it.parents();
   var serialize = $(this).serializeArray();
   var data = {};
   $.each(serialize, function (i, field) {
